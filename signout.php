@@ -6,27 +6,22 @@
 		include 'timezone.php';
 
 		$employee = $_REQUEST['employee'];
-		$status = $_REQUEST['status'];
 
-		if(!empty($status)){
-            $sql = "SELECT * FROM employees WHERE employee_id = '$employee'";
-            $query = $conn->query($sql);
-
-            if($query->num_rows > 0){
+        $sql = "SELECT * FROM employees WHERE employee_id = '$employee'";
+        $query = $conn->query($sql);
+        if($query->num_rows > 0){
                 $row = $query->fetch_assoc();
                 $id = $row['id'];
 
                 $date_now = date('Y-m-d');
                 $time_now = date('H:i:s');
 
-                if($status == 'in'){
-                    $sql = "SELECT * FROM attendance WHERE employee_id = '$id' AND date = '$date_now' AND time_in IS NOT NULL";
-                    $query = $conn->query($sql);
-                    if($query->num_rows > 0){
-                        $output['error'] = true;
-                        $output['message'] = 'You have timed in for today';
-                    }
-                    else{
+                $sql = "SELECT * FROM attendance WHERE employee_id = '$id' AND date = '$date_now' AND time_in IS NOT NULL";
+                $query = $conn->query($sql);
+                if($query->num_rows > 0){
+                        $echoMsg = 'Hi '.$row['firstname'].', You have timed in for today!';
+                }
+                else{
                         //updates
                         $sched = $row['schedule_id'];
                         $lognow = date('H:i:s');
@@ -37,32 +32,31 @@
                         //
                         $sql = "INSERT INTO attendance (employee_id, date, time_in, status) VALUES ('$id', '$date_now', '$time_now', '$logstatus')";
                         if($conn->query($sql)){
-                            $output['message'] = 'Time in: '.$row['firstname'].' '.$row['lastname'];
+                            $echoMsg = 'You have timed in successfully! '. $time_now . ' <br><br>';
+                            $echoMsg .= 'Thanks '.$row['firstname'].' You smell productive ;)';
                         }
                         else{
-                            $output['error'] = true;
-                            $output['message'] = $conn->error;
+                            $echoMsg = 'Hi '.$row['firstname'].', Something Went Wrong. Please try again! '. $time_now;
                         }
                     }
-                }
-                else{
+
+                if($query->num_rows > 0){
                     $sql = "SELECT *, attendance.id AS uid FROM attendance LEFT JOIN employees ON employees.id=attendance.employee_id WHERE attendance.employee_id = '$id' AND date = '$date_now'";
                     $query = $conn->query($sql);
                     if($query->num_rows < 1){
-                        $output['error'] = true;
-                        $output['message'] = 'Cannot Timeout. No time in.';
+                        $echoMsg = 'Hi '.$row['firstname'].', Please time in first!';
                     }
                     else{
                         $row = $query->fetch_assoc();
                         if($row['time_out'] != '00:00:00'){
-                            $output['error'] = true;
-                            $output['message'] = 'You have timed out for today';
+                            $echoMsg = 'Hi '.$row['firstname'].', You have timed out for today!';
                         }
                         else{
 
                             $sql = "UPDATE attendance SET time_out = '".$time_now."' WHERE id = '".$row['uid']."'";
                             if($conn->query($sql)){
-                                $output['message'] = 'Time out: '.$row['firstname'].' '.$row['lastname'];
+                                $echoMsg = 'You have timed out successfully! '. $time_now . ' <br><br>';
+                                $echoMsg .= 'Thanks '.$row['firstname'].' Have a nice day :)';
 
                                 $sql = "SELECT * FROM attendance WHERE id = '".$row['uid']."'";
                                 $query = $conn->query($sql);
@@ -98,66 +92,17 @@
                                 $conn->query($sql);
                             }
                             else{
-                                $output['error'] = true;
-                                $output['message'] = $conn->error;
+                                $echoMsg = 'Hi '.$row['firstname'].', Something Went Wrong. Please try again! '. $time_now;
                             }
                         }
 
                     }
                 }
             }
-            else{
-                $output['error'] = true;
-                $output['message'] = 'Employee ID not found';
-            }
-
-            echo json_encode($output);
-
-        }
-		else{
-            $sql = "SELECT * FROM employees WHERE employee_id = '$employee'";
-            $query = $conn->query($sql);
-
-            if($query->num_rows > 0){
-                $row = $query->fetch_assoc();
-                $id = $row['id'];
-
-                $date_now = date('Y-m-d');
-                $time_now = date('H:i:s');
-
-                $sql = "SELECT * FROM attendance WHERE employee_id = '$id' AND date = '$date_now' AND time_in IS NOT NULL";
-                $query = $conn->query($sql);
-                if($query->num_rows > 0){
-                        $echoMsg = 'Hi '.$row['firstname'].', You have timed in for today!';
-                }
-                else{
-                    $echoMsg = 'Hi '.$row['firstname'].', please sign your attendance below <br><br>';
-                    $echoMsg .= '<a href="signin.php?employee='.$employee.'"><strong> Sign In </strong></a>';
-                }
-
-                if($query->num_rows > 0){
-                    $sql = "SELECT *, attendance.id AS uid FROM attendance LEFT JOIN employees ON employees.id=attendance.employee_id WHERE attendance.employee_id = '$id' AND date = '$date_now'";
-                    $query = $conn->query($sql);
-                    if($query->num_rows < 1){
-                        $echoMsg = 'Hi '.$row['firstname'].', Please time in first!';
-                    }
-                    else{
-                        $row = $query->fetch_assoc();
-                        if($row['time_out'] != '00:00:00'){
-                            $echoMsg = 'Hi '.$row['firstname'].', You have timed out for today!';
-                        }
-                        else{
-                            $echoMsg = 'Hi '.$row['firstname'].', please sign your attendance below <br><br>';
-                            $echoMsg .= '<a href="signout.php?employee='.$employee.'"><strong> Sign Out </strong></a>';
-                        }
-                    }
-                }
-            }
-            else{
+        else{
                 $echoMsg = 'Are you an intruder? Please use your own identifier! ';
             }
 
-            echo '<h1 style="margin-top:20%; text-align: center">'.$echoMsg.'</h1>';
-        }
+        echo '<h1 style="margin-top:20%; text-align: center">'.$echoMsg.'</h1>';
 	}
 ?>
